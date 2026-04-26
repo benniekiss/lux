@@ -220,6 +220,8 @@ pub struct PartialProjectToml {
     pub(crate) test: Option<TestSpecInternal>,
     #[serde(default)]
     pub(crate) deploy: Option<DeploySpec>,
+    #[serde(default)]
+    pub(crate) format: Option<FmtSpec>,
 
     /// Used to bind the project TOML to a project root
     #[serde(skip, default = "ProjectRoot::new")]
@@ -334,6 +336,7 @@ impl PartialProjectToml {
                 local: LocalRockSource::default(),
                 source_spec: RockSourceSpec::File(self.project_root.to_path_buf()),
             }),
+            format: project_toml.format.map(PerPlatform::new),
         };
 
         let rockspec_file_name = format!("{}-{}.rockspec", validated.package, validated.version);
@@ -446,6 +449,7 @@ impl PartialProjectToml {
 
             // Keep the project root the same, as it is not part of the lua rockspec
             project_root: self.project_root,
+            format: self.format,
         }
     }
 }
@@ -524,6 +528,18 @@ pub struct RunSpec {
     pub(crate) args: Option<NonEmpty<String>>,
 }
 
+#[derive(clap::ValueEnum, Clone, Debug, Deserialize)]
+pub enum FmtBackend {
+    Stylua,
+    EmmyluaCodestyle,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct FmtSpec {
+    /// Formatting backend to use
+    pub backend: FmtBackend,
+}
+
 /// The `lux.toml` file, after being properly deserialized.
 /// This struct may be used to build a local version of a project.
 /// To build a rockspec, use `RemoteProjectToml`.
@@ -549,11 +565,17 @@ pub struct LocalProjectToml {
 
     /// A source pointing to the current project's root.
     source: PerPlatform<RemoteRockSource>,
+
+    format: Option<PerPlatform<FmtSpec>>,
 }
 
 impl LocalProjectToml {
     pub fn run(&self) -> Option<&PerPlatform<RunSpec>> {
         self.run.as_ref()
+    }
+
+    pub fn fmt(&self) -> Option<&PerPlatform<FmtSpec>> {
+        self.format.as_ref()
     }
 
     /// Convert this project TOML to a Lua rockspec.
@@ -1417,6 +1439,7 @@ mod tests {
         assert_eq!(merged.format(), expected_rockspec.format());
         // Ensure that the run command is retained after merge.
         assert!(merged.local.run().is_some());
+        assert!(merged.local.format().is_some());
     }
 
     #[test]

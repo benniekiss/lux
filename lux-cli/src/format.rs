@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::Args;
 use eyre::{Context, OptionExt, Result};
-use lux_lib::project::Project;
+use lux_lib::project::{project_toml::FmtBackend, Project};
 use path_slash::PathExt;
 use stylua_lib::Config;
 use walkdir::WalkDir;
@@ -12,15 +12,8 @@ pub struct Fmt {
     /// Optional path to a workspace or Lua file to format.
     workspace_or_file: Option<PathBuf>,
 
-    #[clap(default_value = "stylua")]
     #[arg(long)]
-    backend: FmtBackend,
-}
-
-#[derive(clap::ValueEnum, Clone, Debug)]
-enum FmtBackend {
-    Stylua,
-    EmmyluaCodestyle,
+    backend: Option<FmtBackend>,
 }
 
 // TODO: Add `PathBuf` parameter that describes what directory or file to format here.
@@ -33,6 +26,15 @@ pub fn format(args: Fmt) -> Result<()> {
         .or_else(|_| std::fs::read_to_string(".stylua.toml"))
         .map(|config: String| toml::from_str(&config).unwrap_or_default())
         .unwrap_or_default();
+
+    let backend = args.backend.unwrap_or(
+        project
+            .toml()
+            .into_local()?
+            .fmt()
+            .map(|backend| backend.current_platform().backend.clone())
+            .unwrap_or(FmtBackend::Stylua),
+    );
 
     WalkDir::new(project.root().join("src"))
         .into_iter()
@@ -56,7 +58,7 @@ pub fn format(args: Fmt) -> Result<()> {
             {
                 let file = file.path();
                 let unformatted_code = std::fs::read_to_string(file)?;
-                let formatted_code = match args.backend {
+                let formatted_code = match backend {
                     FmtBackend::Stylua => stylua_lib::format_code(
                         &unformatted_code,
                         config,
@@ -86,7 +88,7 @@ pub fn format(args: Fmt) -> Result<()> {
 
     if rockspec.exists() {
         let unformatted_code = std::fs::read_to_string(&rockspec)?;
-        let formatted_code = match args.backend {
+        let formatted_code = match backend {
             FmtBackend::Stylua => stylua_lib::format_code(
                 &unformatted_code,
                 config,
