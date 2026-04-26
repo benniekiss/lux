@@ -530,7 +530,9 @@ pub struct RunSpec {
 
 #[derive(clap::ValueEnum, Clone, Debug, Deserialize)]
 pub enum FmtBackend {
+    #[serde(rename = "stylua")]
     Stylua,
+    #[serde(rename = "emmylua-codestyle", alias = "emmylua")]
     EmmyluaCodestyle,
 }
 
