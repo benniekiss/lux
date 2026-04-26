@@ -1346,6 +1346,9 @@ mod tests {
 
         [build]
         type = "builtin"
+
+        [format]
+        backend = "emmylua"
         "#;
 
         let mergable_rockspec_content = r#"
