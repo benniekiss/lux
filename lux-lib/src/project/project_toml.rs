@@ -528,7 +528,8 @@ pub struct RunSpec {
     pub(crate) args: Option<NonEmpty<String>>,
 }
 
-#[derive(clap::ValueEnum, Clone, Debug, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[derive(Clone, Debug, Deserialize)]
 pub enum FmtBackend {
     #[serde(rename = "stylua")]
     Stylua,
@@ -1441,7 +1442,7 @@ mod tests {
         assert_eq!(merged.format(), expected_rockspec.format());
         // Ensure that the run command is retained after merge.
         assert!(merged.local.run().is_some());
-        assert!(merged.local.format().is_some());
+        assert!(merged.local.fmt().is_some());
     }
 
     #[test]
